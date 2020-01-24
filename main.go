@@ -16,10 +16,16 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 )
 
+const (
+	version = "v1.0.0"
+)
+
 var (
 	schemaFlag = flag.String("s", "", "primary JSON schema to validate against, required")
-	refFlags stringFlags
 	quietFlag = flag.Bool("q", false, "quiet, only print validation failures and errors")
+	versionFlag = flag.Bool("v", false, "print version and exit")
+
+	refFlags stringFlags
 )
 
 func init() {
@@ -30,6 +36,10 @@ func init() {
 func main() {
 	log.SetFlags(0)
 	flag.Parse()
+	if *versionFlag {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 	if *schemaFlag == "" || flag.NArg() == 0 {
 		printUsage()
 		os.Exit(2)
