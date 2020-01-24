@@ -73,7 +73,7 @@ func main() {
 				result, err := schema.Validate(loader)
 				switch {
 				case err != nil:
-					fmt.Printf("%s: error: %s\n", err)
+					fmt.Printf("%s: error: %s\n", path, err)
 				case result.Valid():
 					fmt.Printf("%s: ok\n", path)
 				default:
