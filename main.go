@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	schemaFlag = flag.String("s", "", "primary JSON schema to validate against")
+	schemaFlag = flag.String("s", "", "primary JSON schema to validate against, required")
 	refFlags stringFlags
-	quietFlag = flag.Bool("q", false, "quiet, skip printing valid JSON documents")
+	quietFlag = flag.Bool("q", false, "quiet, only print validation failures and errors")
 )
 
 func init() {
@@ -77,22 +77,34 @@ func main() {
 				case !result.Valid():
 					lines := make([]string, len(result.Errors()))
 					for i, desc := range result.Errors() {
-						lines[i] = fmt.Sprintf("%s: invalid: %s", path, desc)
+						lines[i] = fmt.Sprintf("%s: fail: %s", path, desc)
 					}
 					fmt.Println(strings.Join(lines, "\n"))
 				case !*quietFlag:
-					fmt.Printf("%s: ok\n", path)
+					fmt.Printf("%s: pass\n", path)
 				}
 			}(p)
 		}
 	}
 	wg.Wait()
-
-	// TODO Summary of invalid/error and proper exit code
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, "usage: %s -s schema.json [-r ref-schema.json -r ...] document.json [...]\n\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, `Usage: %s -s schema.json [options] document.json...
+
+  yajsv validates JSON documents against a schema. One of three statuses are
+  reported per document:
+
+    pass: Document is valid relative to the schema
+    fail: Document is invalid relative to the schema
+    error: Document is malformed, e.g. not valid JSON
+
+  The 'fail' status may be reported multiple times per-document, once for each
+  schema validation failure.
+
+Options:
+
+`, os.Args[0])
 	flag.PrintDefaults()
 	fmt.Fprintln(os.Stderr)
 }
