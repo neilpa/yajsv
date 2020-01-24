@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/mitchellh/go-homedir"
@@ -18,18 +19,18 @@ import (
 var (
 	schemaFlag = flag.String("s", "", "primary JSON schema to validate against")
 	refFlags stringFlags
-	// TODO quiet and progress flags
+	quietFlag = flag.Bool("q", false, "quiet, skip printing valid JSON documents")
 )
 
 func init() {
 	flag.Var(&refFlags, "r", "referenced schema(s), can be globs and/or used multiple times")
+	flag.Usage = printUsage
 }
 
 func main() {
 	flag.Parse()
 	if *schemaFlag == "" {
-		fmt.Fprintf(os.Stderr, "usage: %s -s schema.json [-r ref-schema.json -r ...] document.json [...]\n\n", os.Args[0])
-		flag.PrintDefaults()
+		printUsage()
 		os.Exit(2)
 	}
 
@@ -53,7 +54,7 @@ func main() {
     schemaLoader := gojsonschema.NewReferenceLoader(schemaUri)
 	schema, err := sl.Compile(schemaLoader)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	var wg sync.WaitGroup
@@ -73,19 +74,27 @@ func main() {
 				switch {
 				case err != nil:
 					fmt.Printf("%s: error: %s\n", path, err)
-				case result.Valid():
-					fmt.Printf("%s: ok\n", path)
-				default:
-					fmt.Printf("%s: invalid\n", path)
-					for _, desc := range result.Errors() {
-						fmt.Printf("%s: \t%s\n", path, desc)
+				case !result.Valid():
+					lines := make([]string, len(result.Errors()))
+					for i, desc := range result.Errors() {
+						lines[i] = fmt.Sprintf("%s: invalid: %s", path, desc)
 					}
+					fmt.Println(strings.Join(lines, "\n"))
+				case !*quietFlag:
+					fmt.Printf("%s: ok\n", path)
 				}
 			}(p)
 		}
 	}
 	wg.Wait()
 
+	// TODO Summary of invalid/error and proper exit code
+}
+
+func printUsage() {
+	fmt.Fprintf(os.Stderr, "usage: %s -s schema.json [-r ref-schema.json -r ...] document.json [...]\n\n", os.Args[0])
+	flag.PrintDefaults()
+	fmt.Fprintln(os.Stderr)
 }
 
 func fileUri(path string) string {
