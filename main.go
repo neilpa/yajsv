@@ -7,13 +7,12 @@ import (
     "fmt"
 	"log"
 	"os"
-	"os/user"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 
-    "github.com/xeipuuv/gojsonschema"
+	"github.com/mitchellh/go-homedir"
+	"github.com/xeipuuv/gojsonschema"
 )
 
 var (
@@ -100,14 +99,10 @@ func fileUri(path string) string {
 // glob is a wrapper that also resolves `~` since we may be skipping
 // the shell expansion when single-quoting globs at the command line
 func glob(pattern string) []string {
-	if strings.HasPrefix(pattern, "~/") {
-		u, err := user.Current()
-		if err != nil {
-			log.Fatal(err)
-		}
-		pattern = filepath.Join(u.HomeDir, pattern[1:])
+	pattern, err := homedir.Expand(pattern)
+	if err != nil {
+		log.Fatal(err)
 	}
-
 	paths, err := filepath.Glob(pattern)
 	if err != nil {
 		log.Fatal(err)
