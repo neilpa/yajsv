@@ -4,6 +4,14 @@ Yet Another [JSON-Schema](https://json-schema.org) Validator. Command line tool 
 
 The real credit goes to [xeipuuv/gojsonschema](https://github.com/xeipuuv/gojsonschema) which this wraps to create the CLI.
 
+## Installation
+
+Simply use `go get` to install
+
+```
+go get github.com/neilpa/yajsv
+```
+
 ## Usage
 
 ```
