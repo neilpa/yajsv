@@ -28,8 +28,9 @@ func init() {
 }
 
 func main() {
+	log.SetFlags(0)
 	flag.Parse()
-	if *schemaFlag == "" {
+	if *schemaFlag == "" || flag.NArg() == 0 {
 		printUsage()
 		os.Exit(2)
 	}
@@ -46,7 +47,7 @@ func main() {
 			loader := gojsonschema.NewReferenceLoader(uri)
 			err := sl.AddSchemas(loader)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("%s: invalid schema: %s\n", p, err)
 			}
 		}
 	}
@@ -54,43 +55,70 @@ func main() {
     schemaLoader := gojsonschema.NewReferenceLoader(schemaUri)
 	schema, err := sl.Compile(schemaLoader)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("%s: invalid schema: %s\n", *schemaFlag, err)
+	}
+
+	docs := make([]string, 0, flag.NArg())
+	for _, arg := range flag.Args() {
+		docs = append(docs, glob(arg)...)
 	}
 
 	var wg sync.WaitGroup
 	// Limit the number of simultaneously open files to avoid ulimit issues
 	sem := make(chan int, runtime.GOMAXPROCS(0)+10)
 
-	for _, arg := range flag.Args() {
-		for _, p := range glob(arg) {
-			wg.Add(1)
-			go func(path string) {
-				defer wg.Done()
-				sem <- 0
-				defer func() { <-sem }()
+	failures := make([]string, 0)
+	errors := make([]string, 0)
 
-				loader := gojsonschema.NewReferenceLoader(fileUri(path))
-				result, err := schema.Validate(loader)
-				switch {
-				case err != nil:
-					fmt.Printf("%s: error: %s\n", path, err)
-				case !result.Valid():
-					lines := make([]string, len(result.Errors()))
-					for i, desc := range result.Errors() {
-						lines[i] = fmt.Sprintf("%s: fail: %s", path, desc)
-					}
-					fmt.Println(strings.Join(lines, "\n"))
-				case !*quietFlag:
-					fmt.Printf("%s: pass\n", path)
+	for _, p := range docs {
+		wg.Add(1)
+		go func(path string) {
+			defer wg.Done()
+			sem <- 0
+			defer func() { <-sem }()
+
+			loader := gojsonschema.NewReferenceLoader(fileUri(path))
+			result, err := schema.Validate(loader)
+			switch {
+			case err != nil:
+				msg := fmt.Sprintf("%s: error: %s", path, err)
+				fmt.Println(msg)
+				errors = append(errors, msg)
+
+			case !result.Valid():
+				lines := make([]string, len(result.Errors()))
+				for i, desc := range result.Errors() {
+					lines[i] = fmt.Sprintf("%s: fail: %s", path, desc)
 				}
-			}(p)
-		}
+				msg := strings.Join(lines, "\n")
+				fmt.Println(msg)
+				failures = append(failures, msg)
+
+			case !*quietFlag:
+				fmt.Printf("%s: pass\n", path)
+			}
+		}(p)
 	}
 	wg.Wait()
+
+	if !*quietFlag {
+		if len(failures) > 0 {
+			fmt.Printf("%d of %d failed validation\n", len(failures), len(docs))
+			fmt.Println(strings.Join(failures, "\n"))
+		}
+		if len(errors) > 0 {
+			fmt.Printf("%d of %d malformed documents\n", len(errors), len(docs))
+			fmt.Println(strings.Join(errors, "\n"))
+		}
+	}
+
+	if len(failures) > 0 || len(errors) > 0 {
+		os.Exit(1)
+	}
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `Usage: %s -s schema.json [options] document.json...
+	fmt.Fprintf(os.Stderr, `Usage: %s -s schema.json [options] document.json ...
 
   yajsv validates JSON documents against a schema. One of three statuses are
   reported per document:
@@ -112,7 +140,7 @@ Options:
 func fileUri(path string) string {
 	abs, err := filepath.Abs(path)
 	if err != nil {
-		panic(err)
+		log.Fatalf("%s: %s", path, err)
 	}
 	return "file://" + abs
 }
@@ -127,6 +155,9 @@ func glob(pattern string) []string {
 	paths, err := filepath.Glob(pattern)
 	if err != nil {
 		log.Fatal(err)
+	}
+	if len(paths) == 0 {
+		log.Fatalf("%s: no such file or directory", pattern)
 	}
 	return paths
 }
