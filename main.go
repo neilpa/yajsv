@@ -29,7 +29,7 @@ func init() {
 func main() {
 	flag.Parse()
 	if *schemaFlag == "" {
-		fmt.Fprintf(os.Stderr, "usage: %s -s SCHEMA [-r REF_SCHEMA -r REF_SCHEMA ...] DATA1 DATA2 ...\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "usage: %s -s schema.json [-r ref-schema.json -r ...] document.json [...]\n\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
