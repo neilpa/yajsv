@@ -7,8 +7,10 @@ import (
     "fmt"
 	"log"
 	"os"
+	"os/user"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 
     "github.com/xeipuuv/gojsonschema"
@@ -36,11 +38,7 @@ func main() {
 	schemaUri := fileUri(*schemaFlag)
 
 	for _, ref := range refFlags {
-		paths, err := filepath.Glob(ref)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, p := range paths {
+		for _, p := range glob(ref) {
 			uri := fileUri(p)
 			if uri == schemaUri {
 				continue
@@ -64,14 +62,7 @@ func main() {
 	sem := make(chan int, runtime.GOMAXPROCS(0)+10)
 
 	for _, arg := range flag.Args() {
-		log.Println("before glob")
-		docPaths, err := filepath.Glob(arg)
-		if err != nil {
-			log.Fatal(err)
-		}
-		log.Println("after glob")
-
-		for _, p := range docPaths {
+		for _, p := range glob(arg) {
 			wg.Add(1)
 			go func(path string) {
 				defer wg.Done()
@@ -104,6 +95,24 @@ func fileUri(path string) string {
 		panic(err)
 	}
 	return "file://" + abs
+}
+
+// glob is a wrapper that also resolves `~` since we may be skipping
+// the shell expansion when single-quoting globs at the command line
+func glob(pattern string) []string {
+	if strings.HasPrefix(pattern, "~/") {
+		u, err := user.Current()
+		if err != nil {
+			log.Fatal(err)
+		}
+		pattern = filepath.Join(u.HomeDir, pattern[1:])
+	}
+
+	paths, err := filepath.Glob(pattern)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return paths
 }
 
 type stringFlags []string
