@@ -31,7 +31,7 @@ var (
 )
 
 func init() {
-	flag.Var(&listFlags, "l", "validate JSON documents from newline separated list of paths and/or globs in a text file")
+	flag.Var(&listFlags, "l", "validate JSON documents from newline separated paths and/or globs in a text file (relative to the basename of the file itself)")
 	flag.Var(&refFlags, "r", "referenced schema(s), can be globs and/or used multiple times")
 	flag.Usage = printUsage
 }
@@ -53,14 +53,17 @@ func main() {
 		docs = append(docs, glob(arg)...)
 	}
 	for _, list := range listFlags {
+		dir := filepath.Dir(list)
 		f, err := os.Open(list)
 		if err != nil {
 			log.Fatalf("%s: %s\n", list, err)
 		}
 		defer f.Close()
+
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
-			pattern := strings.TrimSpace(scanner.Text())
+			// Calclate the glob relative to the directory of the file list
+			pattern := filepath.Join(dir, strings.TrimSpace(scanner.Text()))
 			docs = append(docs, glob(pattern)...)
 		}
 		if err := scanner.Err(); err != nil {
