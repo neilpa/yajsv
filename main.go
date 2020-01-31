@@ -63,7 +63,10 @@ func main() {
 		scanner := bufio.NewScanner(f)
 		for scanner.Scan() {
 			// Calclate the glob relative to the directory of the file list
-			pattern := filepath.Join(dir, strings.TrimSpace(scanner.Text()))
+			pattern := strings.TrimSpace(scanner.Text())
+			if !filepath.IsAbs(pattern) {
+				pattern = filepath.Join(dir, pattern)
+			}
 			docs = append(docs, glob(pattern)...)
 		}
 		if err := scanner.Err(); err != nil {
