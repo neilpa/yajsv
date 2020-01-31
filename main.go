@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
     "fmt"
 	"log"
@@ -17,7 +18,7 @@ import (
 )
 
 const (
-	version = "v1.0.0"
+	version = "v1.1.0"
 )
 
 var (
@@ -25,10 +26,12 @@ var (
 	quietFlag = flag.Bool("q", false, "quiet, only print validation failures and errors")
 	versionFlag = flag.Bool("v", false, "print version and exit")
 
+	listFlags stringFlags
 	refFlags stringFlags
 )
 
 func init() {
+	flag.Var(&listFlags, "l", "validate JSON documents from newline separated list of paths and/or globs in a text file")
 	flag.Var(&refFlags, "r", "referenced schema(s), can be globs and/or used multiple times")
 	flag.Usage = printUsage
 }
@@ -40,14 +43,37 @@ func main() {
 		fmt.Println(version)
 		os.Exit(0)
 	}
-	if *schemaFlag == "" || flag.NArg() == 0 {
-		printUsage()
-		os.Exit(2)
+	if *schemaFlag == "" {
+		usageError("missing required -s schema argument")
 	}
 
+	// Resolve document paths to validate
+	docs := make([]string, 0)
+	for _, arg := range flag.Args() {
+		docs = append(docs, glob(arg)...)
+	}
+	for _, list := range listFlags {
+		f, err := os.Open(list)
+		if err != nil {
+			log.Fatalf("%s: %s\n", list, err)
+		}
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			pattern := strings.TrimSpace(scanner.Text())
+			docs = append(docs, glob(pattern)...)
+		}
+		if err := scanner.Err(); err != nil {
+			log.Fatalf("%s: invalid file list: %s\n", list, err)
+		}
+	}
+	if len(docs) == 0 {
+		usageError("no JSON documents to validate")
+	}
+
+	// Compile target schema
 	sl := gojsonschema.NewSchemaLoader()
 	schemaUri := fileUri(*schemaFlag)
-
 	for _, ref := range refFlags {
 		for _, p := range glob(ref) {
 			uri := fileUri(p)
@@ -61,25 +87,18 @@ func main() {
 			}
 		}
 	}
-
     schemaLoader := gojsonschema.NewReferenceLoader(schemaUri)
 	schema, err := sl.Compile(schemaLoader)
 	if err != nil {
 		log.Fatalf("%s: invalid schema: %s\n", *schemaFlag, err)
 	}
 
-	docs := make([]string, 0, flag.NArg())
-	for _, arg := range flag.Args() {
-		docs = append(docs, glob(arg)...)
-	}
-
+	// Validate the schema against each doc in parallel, limiting simultaneous
+	// open files to avoid ulimit issues.
 	var wg sync.WaitGroup
-	// Limit the number of simultaneously open files to avoid ulimit issues
 	sem := make(chan int, runtime.GOMAXPROCS(0)+10)
-
 	failures := make([]string, 0)
 	errors := make([]string, 0)
-
 	for _, p := range docs {
 		wg.Add(1)
 		go func(path string) {
@@ -111,6 +130,7 @@ func main() {
 	}
 	wg.Wait()
 
+	// Summarize results (e.g. errors)
 	if !*quietFlag {
 		if len(failures) > 0 {
 			fmt.Printf("%d of %d failed validation\n", len(failures), len(docs))
@@ -121,7 +141,6 @@ func main() {
 			fmt.Println(strings.Join(errors, "\n"))
 		}
 	}
-
 	if len(failures) > 0 || len(errors) > 0 {
 		os.Exit(1)
 	}
@@ -130,7 +149,7 @@ func main() {
 func printUsage() {
 	fmt.Fprintf(os.Stderr, `Usage: %s -s schema.json [options] document.json ...
 
-  yajsv validates JSON documents against a schema. One of three statuses are
+  yajsv validates JSON document(s) against a schema. One of three statuses are
   reported per document:
 
     pass: Document is valid relative to the schema
@@ -146,6 +165,13 @@ Options:
 	flag.PrintDefaults()
 	fmt.Fprintln(os.Stderr)
 }
+
+func usageError(msg string) {
+	fmt.Fprintln(os.Stderr, msg)
+	printUsage()
+	os.Exit(2)
+}
+
 
 func fileUri(path string) string {
 	abs, err := filepath.Abs(path)
