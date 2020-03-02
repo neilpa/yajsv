@@ -5,7 +5,7 @@ package main
 import (
 	"bufio"
 	"flag"
-    "fmt"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -22,12 +22,12 @@ const (
 )
 
 var (
-	schemaFlag = flag.String("s", "", "primary JSON schema to validate against, required")
-	quietFlag = flag.Bool("q", false, "quiet, only print validation failures and errors")
+	schemaFlag  = flag.String("s", "", "primary JSON schema to validate against, required")
+	quietFlag   = flag.Bool("q", false, "quiet, only print validation failures and errors")
 	versionFlag = flag.Bool("v", false, "print version and exit")
 
 	listFlags stringFlags
-	refFlags stringFlags
+	refFlags  stringFlags
 )
 
 func init() {
@@ -93,7 +93,7 @@ func main() {
 			}
 		}
 	}
-    schemaLoader := gojsonschema.NewReferenceLoader(schemaUri)
+	schemaLoader := gojsonschema.NewReferenceLoader(schemaUri)
 	schema, err := sl.Compile(schemaLoader)
 	if err != nil {
 		log.Fatalf("%s: invalid schema: %s\n", *schemaFlag, err)
@@ -178,7 +178,6 @@ func usageError(msg string) {
 	os.Exit(2)
 }
 
-
 func fileUri(path string) string {
 	abs, err := filepath.Abs(path)
 	if err != nil {
@@ -207,7 +206,7 @@ func glob(pattern string) []string {
 type stringFlags []string
 
 func (sf *stringFlags) String() string {
-    return "multi-string"
+	return "multi-string"
 }
 
 func (sf *stringFlags) Set(value string) error {
