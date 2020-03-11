@@ -183,7 +183,19 @@ func fileUri(path string) string {
 	if err != nil {
 		log.Fatalf("%s: %s", path, err)
 	}
-	return "file://" + abs
+
+	uri := "file://"
+
+	if runtime.GOOS == "windows" {
+		uri = uri + "/" + strings.ReplaceAll(
+			strings.ReplaceAll(abs, "\\", "/"),
+			" ", "%20",
+		)
+	} else {
+		uri = uri + abs
+	}
+
+	return uri
 }
 
 // glob is a wrapper that also resolves `~` since we may be skipping
