@@ -12,6 +12,8 @@ Simply use `go get` to install
 go get github.com/neilpa/yajsv
 ```
 
+There are also pre-built static binaries for Windows, Mac and Linux on the [releases tab](https://github.com/neilpa/yajsv/releases/latest).
+
 ## Usage
 
 yajsv validates JSON documents against a schema, providing a status per document:
