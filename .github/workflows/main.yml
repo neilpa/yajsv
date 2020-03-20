@@ -1,0 +1,19 @@
+name: CI
+
+on: [push]
+
+jobs:
+  basic:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+    - uses: actions/checkout@v1
+      with:
+        path: ./src/github.com/neilpa/yajsv
+    - name: Build
+      run: go build -v ./...
+    - name: Test
+      run: go test ./...
