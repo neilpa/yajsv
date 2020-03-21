@@ -1,6 +1,2 @@
 yajsv
 build/
-
-# IntelliJ IDEA files
-.idea/
-*.iml
