@@ -190,14 +190,14 @@ func jsonLoader(path string) (gojsonschema.JSONLoader, error) {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `Usage: %s -s schema.json [options] document.json ...
+	fmt.Fprintf(os.Stderr, `Usage: %s -s schema.json|schema.yml [options] document.json|document.yml ...
 
-  yajsv validates JSON document(s) against a schema. One of three statuses are
+  yajsv validates JSON and YAML document(s) against a schema. One of three statuses are
   reported per document:
 
     pass: Document is valid relative to the schema
     fail: Document is invalid relative to the schema
-    error: Document is malformed, e.g. not valid JSON
+    error: Document is malformed, e.g. not valid JSON or YAML
 
   The 'fail' status may be reported multiple times per-document, once for each
   schema validation failure.
