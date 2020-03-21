@@ -4,7 +4,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -12,14 +11,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"github.com/ghodss/yaml"
 	"strings"
 	"sync"
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/xeipuuv/gojsonschema"
-	"sigs.k8s.io/yaml"
 
-	//"neilpa.me/go-x/fileuri"
 )
 
 const (
@@ -86,48 +84,31 @@ func realMain(args []string) int {
 		return usageError("no JSON documents to validate")
 	}
 
-
 	// Compile target schema
 	sl := gojsonschema.NewSchemaLoader()
 	//schemaUri := *schemaFlag
 	schemaUri := fileUri(*schemaFlag)
 	for _, ref := range refFlags {
 		for _, p := range glob(ref) {
-			uri := fileUri(p)
-			if uri == schemaUri {
+			if p == schemaUri {
 				continue
 			}
-			var loader gojsonschema.JSONLoader = nil
 
-			if strings.HasSuffix(uri, ".yaml") || strings.HasSuffix(uri, ".yml") {
-				valuesJSON, err := convertToJson(uri)
-				if err != nil {
-					log.Fatal("unable to parse YAML schema\n", err)
-				}
-				loader = gojsonschema.NewBytesLoader(valuesJSON)
-			} else {
-				loader = gojsonschema.NewReferenceLoader(uri)
-			}
-			err := sl.AddSchemas(loader)
+			loader, err := jsonLoader(p)
 			if err != nil {
+				log.Fatalf("%s: unable to load schema ref: %s\n", *schemaFlag, err)
+			}
+			addSchemaErr := sl.AddSchemas(loader)
+			if addSchemaErr != nil {
 				log.Fatalf("%s: invalid schema: %s\n", p, err)
 			}
 		}
 	}
 
-	var schemaLoader gojsonschema.JSONLoader = nil
-
-	if strings.HasSuffix(schemaUri, ".yaml") || strings.HasSuffix(schemaUri, ".yml") {
-		valuesJSON, err := convertToJson(schemaUri)
-		if err != nil {
-			log.Fatal("unable to parse YAML schema\n", err)
-		}
-		schemaLoader = gojsonschema.NewBytesLoader(valuesJSON)
-	} else {
-		schemaLoader = gojsonschema.NewReferenceLoader(schemaUri)
+	schemaLoader, err := jsonLoader(schemaUri)
+	if err != nil {
+		log.Fatalf("%s: unable to load schema: %s\n", *schemaFlag, err)
 	}
-
-	//schemaLoader := gojsonschema.NewReferenceLoader(schemaUri)
 	schema, err := sl.Compile(schemaLoader)
 	if err != nil {
 		log.Fatalf("%s: invalid schema: %s\n", *schemaFlag, err)
@@ -146,18 +127,11 @@ func realMain(args []string) int {
 			sem <- 0
 			defer func() { <-sem }()
 
-			var loader gojsonschema.JSONLoader = nil
 
-			if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
-				valuesJSON, err := convertToJson(path)
-				if err != nil {
-					log.Fatal("unable to parse YAML\n", err)
-				}
-				loader = gojsonschema.NewBytesLoader(valuesJSON)
-			} else {
-				loader = gojsonschema.NewReferenceLoader(fileUri(path))
+			loader, err := jsonLoader(path)
+			if err != nil {
+				log.Fatalf("%s: unable to load doc: %s\n", *schemaFlag, err)
 			}
-
 			result, err := schema.Validate(loader)
 			switch {
 			case err != nil:
@@ -202,44 +176,19 @@ func realMain(args []string) int {
 	return exit
 }
 
-func convertToJson(path string) ([]byte, error) {
-	values, err := ReadValuesFile(path)
+func jsonLoader(path string) (gojsonschema.JSONLoader, error) {
+	buf, err := ioutil.ReadFile(path)
 	if err != nil {
-		//return errors.Wrap(err, "unable to parse YAML")
-		return []byte{}, err
+		return nil, err
 	}
-	valuesData, err := yaml.Marshal(values)
+	switch filepath.Ext(path) {
+	case ".yml", ".yaml":
+		buf, err = yaml.YAMLToJSON(buf)
+	}
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
-	valuesJSON, err := yaml.YAMLToJSON(valuesData)
-	if err != nil {
-		return []byte{}, err
-	}
-	if bytes.Equal(valuesJSON, []byte("null")) {
-		valuesJSON = []byte("{}")
-	}
-	return valuesJSON, err
-}
-
-type Values map[string]interface{}
-
-// ReadValues will parse YAML byte data into a Values.
-func ReadValues(data []byte) (vals Values, err error) {
-	err = yaml.Unmarshal(data, &vals)
-	if len(vals) == 0 {
-		vals = Values{}
-	}
-	return vals, err
-}
-
-// ReadValuesFile will parse a YAML file into a map of values.
-func ReadValuesFile(filename string) (Values, error) {
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return map[string]interface{}{}, err
-	}
-	return ReadValues(data)
+	return gojsonschema.NewBytesLoader(buf), nil
 }
 
 func printUsage() {
@@ -269,29 +218,6 @@ func usageError(msg string) int {
 	fmt.Fprintln(os.Stderr, msg)
 	printUsage()
 	return 4
-}
-
-func fileUri(path string) string {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		log.Fatalf("%s: %s", path, err)
-	}
-
-	uri := "file://"
-
-	if runtime.GOOS == "windows" {
-		// This is not formally correct for all corner cases in windows
-		// file handling but should work for all standard cases. See:
-		// https://docs.microsoft.com/en-us/archive/blogs/ie/file-uris-in-windows
-		uri = uri + "/" + strings.ReplaceAll(
-			strings.ReplaceAll(abs, "\\", "/"),
-			" ", "%20",
-		)
-	} else {
-		uri = uri + abs
-	}
-
-	return uri
 }
 
 // glob is a wrapper that also resolves `~` since we may be skipping

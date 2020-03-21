@@ -1,4 +1,5 @@
 yajsv
+<<<<<<< HEAD
 build/
 
 bin/
@@ -8,3 +9,6 @@ coverage.out
 .idea
 *.iml
 /*.csv
+=======
+build/
+>>>>>>> master
