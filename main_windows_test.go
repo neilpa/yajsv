@@ -6,8 +6,35 @@ import (
 	"log"
 )
 
-func ExampleMain_pass() {
+func ExampleMain_pass_ymlschema_ymldoc() {
+	exit := realMain([]string{"-s", "testdata\\schema.yml", "testdata\\data-pass.yml"})
+	if exit != 0 {
+		log.Fatalf("exit: got %d, want 0", exit)
+	}
+	// Output:
+	// testdata\data-pass.yml: pass
+}
+
+func ExampleMain_pass_jsonschema_ymldoc() {
+	exit := realMain([]string{"-s", "testdata\\schema.json", "testdata\\data-pass.yml"})
+	if exit != 0 {
+		log.Fatalf("exit: got %d, want 0", exit)
+	}
+	// Output:
+	// testdata\data-pass.yml: pass
+}
+
+func ExampleMain_pass_jsonschema_jsondoc() {
 	exit := realMain([]string{"-s", "testdata\\schema.json", "testdata\\data-pass.json"})
+	if exit != 0 {
+		log.Fatalf("exit: got %d, want 0", exit)
+	}
+	// Output:
+	// testdata\data-pass.json: pass
+}
+
+func ExampleMain_pass_ymlschema_jsondoc() {
+	exit := realMain([]string{"-s", "testdata\\schema.yml", "testdata\\data-pass.json"})
 	if exit != 0 {
 		log.Fatalf("exit: got %d, want 0", exit)
 	}
