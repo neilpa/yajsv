@@ -1,4 +1,4 @@
-// yajsv is a command line tool for validating JSON documents against
+// yajsv is a command line tool for validating JSON and YAML documents against
 // a provided JSON Schema - https://json-schema.org/
 package main
 
@@ -11,20 +11,16 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"github.com/ghodss/yaml"
 	"strings"
 	"sync"
 
+	"github.com/ghodss/yaml"
 	"github.com/mitchellh/go-homedir"
 	"github.com/xeipuuv/gojsonschema"
-
-)
-
-const (
-	version = "v1.1.0"
 )
 
 var (
+	version = "undefined"
 	schemaFlag  = flag.String("s", "", "primary JSON schema to validate against, required")
 	quietFlag   = flag.Bool("q", false, "quiet, only print validation failures and errors")
 	versionFlag = flag.Bool("v", false, "print version and exit")
@@ -81,30 +77,38 @@ func realMain(args []string) int {
 		}
 	}
 	if len(docs) == 0 {
-		return usageError("no JSON documents to validate")
+		return usageError("no documents to validate")
 	}
 
 	// Compile target schema
 	sl := gojsonschema.NewSchemaLoader()
-	schemaUri := *schemaFlag
+	schemaPath, err := filepath.Abs(*schemaFlag)
+	if err != nil {
+		log.Fatalf("%s: unable to convert to absolute path: %s\n", *schemaFlag, err)
+	}
 	for _, ref := range refFlags {
 		for _, p := range glob(ref) {
-			if p == schemaUri {
+			absPath, absPathErr := filepath.Abs(p)
+			if absPathErr != nil {
+				log.Fatalf("%s: unable to convert to absolute path: %s\n", absPath, err)
+			}
+
+			if absPath == schemaPath {
 				continue
 			}
 
-			loader, err := jsonLoader(p)
+			loader, err := jsonLoader(absPath)
 			if err != nil {
 				log.Fatalf("%s: unable to load schema ref: %s\n", *schemaFlag, err)
 			}
-			addSchemaErr := sl.AddSchemas(loader)
-			if addSchemaErr != nil {
+
+			if err := sl.AddSchemas(loader); err != nil {
 				log.Fatalf("%s: invalid schema: %s\n", p, err)
 			}
 		}
 	}
 
-	schemaLoader, err := jsonLoader(schemaUri)
+	schemaLoader, err := jsonLoader(schemaPath)
 	if err != nil {
 		log.Fatalf("%s: unable to load schema: %s\n", *schemaFlag, err)
 	}
@@ -129,12 +133,15 @@ func realMain(args []string) int {
 
 			loader, err := jsonLoader(path)
 			if err != nil {
-				log.Fatalf("%s: unable to load doc: %s\n", *schemaFlag, err)
+				msg := fmt.Sprintf("%s: error: load doc %s\n", path, err)
+				fmt.Println(msg)
+				errors = append(errors, msg)
+				return
 			}
 			result, err := schema.Validate(loader)
 			switch {
 			case err != nil:
-				msg := fmt.Sprintf("%s: error: %s", path, err)
+				msg := fmt.Sprintf("%s: error: validate: %s", path, err)
 				fmt.Println(msg)
 				errors = append(errors, msg)
 
@@ -191,14 +198,14 @@ func jsonLoader(path string) (gojsonschema.JSONLoader, error) {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `Usage: %s -s schema.json [options] document.json ...
+	fmt.Fprintf(os.Stderr, `Usage: %s -s schema.(json|yml) [options] document.(json|yml) ...
 
-  yajsv validates JSON document(s) against a schema. One of three statuses are
+  yajsv validates JSON and YAML document(s) against a schema. One of three statuses are
   reported per document:
 
     pass: Document is valid relative to the schema
     fail: Document is invalid relative to the schema
-    error: Document is malformed, e.g. not valid JSON
+    error: Document is malformed, e.g. not valid JSON or YAML
 
   The 'fail' status may be reported multiple times per-document, once for each
   schema validation failure.

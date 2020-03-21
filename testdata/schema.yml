@@ -1,7 +1,7 @@
 ---
 properties:
-  foo:
-    type: string
-  bar: {}
+    foo:
+        type: string
+    bar: {}
 required:
-  - foo
+    - foo

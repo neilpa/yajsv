@@ -1,14 +1,4 @@
 yajsv
-<<<<<<< HEAD
 build/
-
 bin/
 coverage.out
-
-#idea-generated
-.idea
-*.iml
-/*.csv
-=======
-build/
->>>>>>> master
