@@ -18,6 +18,8 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/xeipuuv/gojsonschema"
 	"sigs.k8s.io/yaml"
+
+	//"neilpa.me/go-x/fileuri"
 )
 
 const (
@@ -41,13 +43,17 @@ func init() {
 
 func main() {
 	log.SetFlags(0)
-	flag.Parse()
+	os.Exit(realMain(os.Args[1:]))
+}
+
+func realMain(args []string) int {
+	flag.CommandLine.Parse(args)
 	if *versionFlag {
 		fmt.Println(version)
-		os.Exit(0)
+		return 0
 	}
 	if *schemaFlag == "" {
-		usageError("missing required -s schema argument")
+		return usageError("missing required -s schema argument")
 	}
 
 	// Resolve document paths to validate
@@ -77,13 +83,12 @@ func main() {
 		}
 	}
 	if len(docs) == 0 {
-		usageError("no JSON documents to validate")
+		return usageError("no JSON documents to validate")
 	}
 
 
 	// Compile target schema
 	sl := gojsonschema.NewSchemaLoader()
-	//schemaUri := fileUri(*schemaFlag)
 	schemaUri := *schemaFlag
 	for _, ref := range refFlags {
 		for _, p := range glob(ref) {
@@ -186,9 +191,14 @@ func main() {
 			fmt.Println(strings.Join(errors, "\n"))
 		}
 	}
-	if len(failures) > 0 || len(errors) > 0 {
-		os.Exit(1)
+	exit := 0
+	if len(failures) > 0 {
+		exit |= 1
 	}
+	if len(errors) > 0 {
+		exit |= 2
+	}
+	return exit
 }
 
 func convertToJson(path string) ([]byte, error) {
@@ -244,6 +254,9 @@ func printUsage() {
   The 'fail' status may be reported multiple times per-document, once for each
   schema validation failure.
 
+  Sets the exit code to 1 on any failures, 2 on any errors, 3 on both, 4 on
+  invalid usage. Otherwise, 0 is returned if everything passes validation.
+
 Options:
 
 `, os.Args[0])
@@ -251,10 +264,10 @@ Options:
 	fmt.Fprintln(os.Stderr)
 }
 
-func usageError(msg string) {
+func usageError(msg string) int {
 	fmt.Fprintln(os.Stderr, msg)
 	printUsage()
-	os.Exit(2)
+	return 4
 }
 
 func fileUri(path string) string {

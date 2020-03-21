@@ -1,5 +1,7 @@
 # yajsv
 
+[![CI](https://github.com/neilpa/yajsv/workflows/CI/badge.svg)](https://github.com/neilpa/yajsv/actions/)
+
 Yet Another [JSON-Schema](https://json-schema.org) Validator. Command line tool for validating JSON documents against provided schemas.
 
 The real credit goes to [xeipuuv/gojsonschema](https://github.com/xeipuuv/gojsonschema) which does the heavy lifting behind this CLI.
