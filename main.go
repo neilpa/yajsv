@@ -4,8 +4,10 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -15,6 +17,7 @@ import (
 
 	"github.com/mitchellh/go-homedir"
 	"github.com/xeipuuv/gojsonschema"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -77,23 +80,48 @@ func main() {
 		usageError("no JSON documents to validate")
 	}
 
+
 	// Compile target schema
 	sl := gojsonschema.NewSchemaLoader()
-	schemaUri := fileUri(*schemaFlag)
+	//schemaUri := fileUri(*schemaFlag)
+	schemaUri := *schemaFlag
 	for _, ref := range refFlags {
 		for _, p := range glob(ref) {
 			uri := fileUri(p)
 			if uri == schemaUri {
 				continue
 			}
-			loader := gojsonschema.NewReferenceLoader(uri)
+			var loader gojsonschema.JSONLoader = nil
+
+			if strings.HasSuffix(uri, ".yaml") || strings.HasSuffix(uri, ".yml") {
+				valuesJSON, err := convertToJson(uri)
+				if err != nil {
+					log.Fatal("unable to parse YAML schema\n", err)
+				}
+				loader = gojsonschema.NewBytesLoader(valuesJSON)
+			} else {
+				loader = gojsonschema.NewReferenceLoader(uri)
+			}
 			err := sl.AddSchemas(loader)
 			if err != nil {
 				log.Fatalf("%s: invalid schema: %s\n", p, err)
 			}
 		}
 	}
-	schemaLoader := gojsonschema.NewReferenceLoader(schemaUri)
+
+	var schemaLoader gojsonschema.JSONLoader = nil
+
+	if strings.HasSuffix(schemaUri, ".yaml") || strings.HasSuffix(schemaUri, ".yml") {
+		valuesJSON, err := convertToJson(schemaUri)
+		if err != nil {
+			log.Fatal("unable to parse YAML schema\n", err)
+		}
+		schemaLoader = gojsonschema.NewBytesLoader(valuesJSON)
+	} else {
+		schemaLoader = gojsonschema.NewReferenceLoader(schemaUri)
+	}
+
+	//schemaLoader := gojsonschema.NewReferenceLoader(schemaUri)
 	schema, err := sl.Compile(schemaLoader)
 	if err != nil {
 		log.Fatalf("%s: invalid schema: %s\n", *schemaFlag, err)
@@ -112,7 +140,18 @@ func main() {
 			sem <- 0
 			defer func() { <-sem }()
 
-			loader := gojsonschema.NewReferenceLoader(fileUri(path))
+			var loader gojsonschema.JSONLoader = nil
+
+			if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
+				valuesJSON, err := convertToJson(path)
+				if err != nil {
+					log.Fatal("unable to parse YAML\n", err)
+				}
+				loader = gojsonschema.NewBytesLoader(valuesJSON)
+			} else {
+				loader = gojsonschema.NewReferenceLoader(fileUri(path))
+			}
+
 			result, err := schema.Validate(loader)
 			switch {
 			case err != nil:
@@ -150,6 +189,46 @@ func main() {
 	if len(failures) > 0 || len(errors) > 0 {
 		os.Exit(1)
 	}
+}
+
+func convertToJson(path string) ([]byte, error) {
+	values, err := ReadValuesFile(path)
+	if err != nil {
+		//return errors.Wrap(err, "unable to parse YAML")
+		return []byte{}, err
+	}
+	valuesData, err := yaml.Marshal(values)
+	if err != nil {
+		return []byte{}, err
+	}
+	valuesJSON, err := yaml.YAMLToJSON(valuesData)
+	if err != nil {
+		return []byte{}, err
+	}
+	if bytes.Equal(valuesJSON, []byte("null")) {
+		valuesJSON = []byte("{}")
+	}
+	return valuesJSON, err
+}
+
+type Values map[string]interface{}
+
+// ReadValues will parse YAML byte data into a Values.
+func ReadValues(data []byte) (vals Values, err error) {
+	err = yaml.Unmarshal(data, &vals)
+	if len(vals) == 0 {
+		vals = Values{}
+	}
+	return vals, err
+}
+
+// ReadValuesFile will parse a YAML file into a map of values.
+func ReadValuesFile(filename string) (Values, error) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return map[string]interface{}{}, err
+	}
+	return ReadValues(data)
 }
 
 func printUsage() {
