@@ -1,6 +1,10 @@
 yajsv
 build/
 
-# IntelliJ IDEA files
-.idea/
+bin/
+coverage.out
+
+#idea-generated
+.idea
 *.iml
+/*.csv

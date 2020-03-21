@@ -89,7 +89,8 @@ func realMain(args []string) int {
 
 	// Compile target schema
 	sl := gojsonschema.NewSchemaLoader()
-	schemaUri := *schemaFlag
+	//schemaUri := *schemaFlag
+	schemaUri := fileUri(*schemaFlag)
 	for _, ref := range refFlags {
 		for _, p := range glob(ref) {
 			uri := fileUri(p)
