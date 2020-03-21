@@ -19,7 +19,7 @@ import (
 	"github.com/xeipuuv/gojsonschema"
 	"sigs.k8s.io/yaml"
 
-	//"neilpa.me/go-x/fileuri"
+	"neilpa.me/go-x/fileuri"
 )
 
 const (
@@ -271,25 +271,10 @@ func usageError(msg string) int {
 }
 
 func fileUri(path string) string {
-	abs, err := filepath.Abs(path)
+	uri, err := fileuri.FromPath(path)
 	if err != nil {
 		log.Fatalf("%s: %s", path, err)
 	}
-
-	uri := "file://"
-
-	if runtime.GOOS == "windows" {
-		// This is not formally correct for all corner cases in windows
-		// file handling but should work for all standard cases. See:
-		// https://docs.microsoft.com/en-us/archive/blogs/ie/file-uris-in-windows
-		uri = uri + "/" + strings.ReplaceAll(
-			strings.ReplaceAll(abs, "\\", "/"),
-			" ", "%20",
-		)
-	} else {
-		uri = uri + abs
-	}
-
 	return uri
 }
 

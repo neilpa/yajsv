@@ -5,6 +5,7 @@ go 1.12
 require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/xeipuuv/gojsonschema v1.2.0
+	neilpa.me/go-x v0.1.0
 
 	sigs.k8s.io/yaml v1.2.0
 )
