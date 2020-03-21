@@ -11,20 +11,16 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"github.com/ghodss/yaml"
 	"strings"
 	"sync"
 
+	"github.com/ghodss/yaml"
 	"github.com/mitchellh/go-homedir"
 	"github.com/xeipuuv/gojsonschema"
-
-)
-
-const (
-	version = "v1.1.0"
 )
 
 var (
+	version = "undefined"
 	schemaFlag  = flag.String("s", "", "primary JSON schema to validate against, required")
 	quietFlag   = flag.Bool("q", false, "quiet, only print validation failures and errors")
 	versionFlag = flag.Bool("v", false, "print version and exit")
