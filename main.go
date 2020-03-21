@@ -81,7 +81,7 @@ func realMain(args []string) int {
 		}
 	}
 	if len(docs) == 0 {
-		return usageError("no JSON documents to validate")
+		return usageError("no documents to validate")
 	}
 
 	// Compile target schema
@@ -129,26 +129,29 @@ func realMain(args []string) int {
 
 			loader, err := jsonLoader(path)
 			if err != nil {
-				log.Fatalf("%s: unable to load doc: %s\n", *schemaFlag, err)
-			}
-			result, err := schema.Validate(loader)
-			switch {
-			case err != nil:
-				msg := fmt.Sprintf("%s: error: %s", path, err)
+				msg := fmt.Sprintf("%s: unable to load doc: %s\n", *schemaFlag, err)
 				fmt.Println(msg)
 				errors = append(errors, msg)
+			} else {
+				result, err := schema.Validate(loader)
+				switch {
+				case err != nil:
+					msg := fmt.Sprintf("%s: error: %s", path, err)
+					fmt.Println(msg)
+					errors = append(errors, msg)
 
-			case !result.Valid():
-				lines := make([]string, len(result.Errors()))
-				for i, desc := range result.Errors() {
-					lines[i] = fmt.Sprintf("%s: fail: %s", path, desc)
+				case !result.Valid():
+					lines := make([]string, len(result.Errors()))
+					for i, desc := range result.Errors() {
+						lines[i] = fmt.Sprintf("%s: fail: %s", path, desc)
+					}
+					msg := strings.Join(lines, "\n")
+					fmt.Println(msg)
+					failures = append(failures, msg)
+
+				case !*quietFlag:
+					fmt.Printf("%s: pass\n", path)
 				}
-				msg := strings.Join(lines, "\n")
-				fmt.Println(msg)
-				failures = append(failures, msg)
-
-			case !*quietFlag:
-				fmt.Printf("%s: pass\n", path)
 			}
 		}(p)
 	}
