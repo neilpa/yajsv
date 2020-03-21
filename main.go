@@ -1,4 +1,4 @@
-// yajsv is a command line tool for validating JSON documents against
+// yajsv is a command line tool for validating JSON and YAML documents against
 // a provided JSON Schema - https://json-schema.org/
 package main
 
