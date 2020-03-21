@@ -82,25 +82,33 @@ func realMain(args []string) int {
 
 	// Compile target schema
 	sl := gojsonschema.NewSchemaLoader()
-	schemaUri := *schemaFlag
+	schemaPath, err := filepath.Abs(*schemaFlag)
+	if err != nil {
+		log.Fatalf("%s: unable to convert to absolute path: %s\n", *schemaFlag, err)
+	}
 	for _, ref := range refFlags {
 		for _, p := range glob(ref) {
-			if p == schemaUri {
+			absPath, absPathErr := filepath.Abs(p)
+			if absPathErr != nil {
+				log.Fatalf("%s: unable to convert to absolute path: %s\n", absPath, err)
+			}
+
+			if absPath == schemaPath {
 				continue
 			}
 
-			loader, err := jsonLoader(p)
+			loader, err := jsonLoader(absPath)
 			if err != nil {
 				log.Fatalf("%s: unable to load schema ref: %s\n", *schemaFlag, err)
 			}
-			addSchemaErr := sl.AddSchemas(loader)
-			if addSchemaErr != nil {
+
+			if err := sl.AddSchemas(loader); err != nil {
 				log.Fatalf("%s: invalid schema: %s\n", p, err)
 			}
 		}
 	}
 
-	schemaLoader, err := jsonLoader(schemaUri)
+	schemaLoader, err := jsonLoader(schemaPath)
 	if err != nil {
 		log.Fatalf("%s: unable to load schema: %s\n", *schemaFlag, err)
 	}
@@ -125,29 +133,29 @@ func realMain(args []string) int {
 
 			loader, err := jsonLoader(path)
 			if err != nil {
-				msg := fmt.Sprintf("%s: unable to load doc: %s\n", *schemaFlag, err)
+				msg := fmt.Sprintf("%s: error: load doc %s\n", path, err)
 				fmt.Println(msg)
 				errors = append(errors, msg)
-			} else {
-				result, err := schema.Validate(loader)
-				switch {
-				case err != nil:
-					msg := fmt.Sprintf("%s: error: %s", path, err)
-					fmt.Println(msg)
-					errors = append(errors, msg)
+				return
+			}
+			result, err := schema.Validate(loader)
+			switch {
+			case err != nil:
+				msg := fmt.Sprintf("%s: error: validate: %s", path, err)
+				fmt.Println(msg)
+				errors = append(errors, msg)
 
-				case !result.Valid():
-					lines := make([]string, len(result.Errors()))
-					for i, desc := range result.Errors() {
-						lines[i] = fmt.Sprintf("%s: fail: %s", path, desc)
-					}
-					msg := strings.Join(lines, "\n")
-					fmt.Println(msg)
-					failures = append(failures, msg)
-
-				case !*quietFlag:
-					fmt.Printf("%s: pass\n", path)
+			case !result.Valid():
+				lines := make([]string, len(result.Errors()))
+				for i, desc := range result.Errors() {
+					lines[i] = fmt.Sprintf("%s: fail: %s", path, desc)
 				}
+				msg := strings.Join(lines, "\n")
+				fmt.Println(msg)
+				failures = append(failures, msg)
+
+			case !*quietFlag:
+				fmt.Printf("%s: pass\n", path)
 			}
 		}(p)
 	}
@@ -190,7 +198,7 @@ func jsonLoader(path string) (gojsonschema.JSONLoader, error) {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `Usage: %s -s schema.json|schema.yml [options] document.json|document.yml ...
+	fmt.Fprintf(os.Stderr, `Usage: %s -s schema.(json|yml) [options] document.(json|yml) ...
 
   yajsv validates JSON and YAML document(s) against a schema. One of three statuses are
   reported per document:

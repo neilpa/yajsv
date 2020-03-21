@@ -84,7 +84,7 @@ func ExampleMain_error_jsonschema_jsondoc() {
 		log.Fatalf("exit: got %d, want 2", exit)
 	}
 	// Output:
-	// testdata\data-error.json: error: invalid character 'o' in literal null (expecting 'u')
+	// testdata\data-error.json: error: validate: invalid character 'o' in literal null (expecting 'u')
 }
 
 func ExampleMain_error_ymlschema_ymldoc() {
@@ -93,7 +93,7 @@ func ExampleMain_error_ymlschema_ymldoc() {
 		log.Fatalf("exit: got %d, want 2", exit)
 	}
 	// Output:
-	// testdata\schema.yml: unable to load doc: yaml: found unexpected end of stream
+	// testdata\data-error.yml: error: load doc yaml: found unexpected end of stream
 }
 
 func ExampleMain_glob_jsonschema_jsondoc() {
@@ -102,7 +102,7 @@ func ExampleMain_glob_jsonschema_jsondoc() {
 		log.Fatalf("exit: got %d, want 3", exit)
 	}
 	// Unordered output:
-	// testdata\data-error.json: error: invalid character 'o' in literal null (expecting 'u')
+	// testdata\data-error.json: error: validate: invalid character 'o' in literal null (expecting 'u')
 	// testdata\data-fail.json: fail: (root): foo is required
 }
 
@@ -112,7 +112,7 @@ func ExampleMain_glob_ymlschema_ymldoc() {
 		log.Fatalf("exit: got %d, want 3", exit)
 	}
 	// Unordered output:
-	// testdata\schema.yml: unable to load doc: yaml: found unexpected end of stream
+	// testdata\data-error.yml: error: load doc yaml: found unexpected end of stream
 	//
 	// testdata\data-fail.yml: fail: (root): foo is required
 }
