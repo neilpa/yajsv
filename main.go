@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -39,13 +40,13 @@ func init() {
 
 func main() {
 	log.SetFlags(0)
-	os.Exit(realMain(os.Args[1:]))
+	os.Exit(realMain(os.Args[1:], os.Stdout))
 }
 
-func realMain(args []string) int {
+func realMain(args []string, w io.Writer) int {
 	flag.CommandLine.Parse(args)
 	if *versionFlag {
-		fmt.Println(Version)
+		fmt.Fprintln(w, Version)
 		return 0
 	}
 	if *schemaFlag == "" {
@@ -72,7 +73,6 @@ func realMain(args []string) int {
 			if !filepath.IsAbs(pattern) {
 				pattern = filepath.Join(dir, pattern)
 			}
-
 			docs = append(docs, glob(pattern)...)
 		}
 		if err := scanner.Err(); err != nil {
@@ -91,9 +91,9 @@ func realMain(args []string) int {
 	}
 	for _, ref := range refFlags {
 		for _, p := range glob(ref) {
-			absPath, absPathErr := filepath.Abs(p)
-			if absPathErr != nil {
-				log.Fatalf("%s: unable to convert to absolute path: %s\n", absPath, absPathErr)
+			absPath, err := filepath.Abs(p)
+			if err != nil {
+				log.Fatalf("%s: unable to convert to absolute path: %s\n", absPath, err)
 			}
 
 			if absPath == schemaPath {
@@ -127,7 +127,6 @@ func realMain(args []string) int {
 	failures := make([]string, 0)
 	errors := make([]string, 0)
 	for _, p := range docs {
-		//fmt.Println(p)
 		wg.Add(1)
 		go func(path string) {
 			defer wg.Done()
@@ -137,8 +136,8 @@ func realMain(args []string) int {
 
 			loader, err := jsonLoader(path)
 			if err != nil {
-				msg := fmt.Sprintf("%s: error: load doc %s\n", path, err)
-				fmt.Println(msg)
+				msg := fmt.Sprintf("%s: error: load doc: %s", path, err)
+				fmt.Fprintln(w, msg)
 				errors = append(errors, msg)
 				return
 			}
@@ -146,7 +145,7 @@ func realMain(args []string) int {
 			switch {
 			case err != nil:
 				msg := fmt.Sprintf("%s: error: validate: %s", path, err)
-				fmt.Println(msg)
+				fmt.Fprintln(w, msg)
 				errors = append(errors, msg)
 
 			case !result.Valid():
@@ -155,11 +154,11 @@ func realMain(args []string) int {
 					lines[i] = fmt.Sprintf("%s: fail: %s", path, desc)
 				}
 				msg := strings.Join(lines, "\n")
-				fmt.Println(msg)
+				fmt.Fprintln(w, msg)
 				failures = append(failures, msg)
 
 			case !*quietFlag:
-				fmt.Printf("%s: pass\n", path)
+				fmt.Fprintf(w, "%s: pass\n", path)
 			}
 		}(p)
 	}
@@ -168,12 +167,12 @@ func realMain(args []string) int {
 	// Summarize results (e.g. errors)
 	if !*quietFlag {
 		if len(failures) > 0 {
-			fmt.Printf("%d of %d failed validation\n", len(failures), len(docs))
-			fmt.Println(strings.Join(failures, "\n"))
+			fmt.Fprintf(w, "%d of %d failed validation\n", len(failures), len(docs))
+			fmt.Fprintln(w, strings.Join(failures, "\n"))
 		}
 		if len(errors) > 0 {
-			fmt.Printf("%d of %d malformed documents\n", len(errors), len(docs))
-			fmt.Println(strings.Join(errors, "\n"))
+			fmt.Fprintf(w, "%d of %d malformed documents\n", len(errors), len(docs))
+			fmt.Fprintln(w, strings.Join(errors, "\n"))
 		}
 	}
 	exit := 0
@@ -237,18 +236,14 @@ func glob(pattern string) []string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	universalPaths := make([]string, 0)
 	paths, err := filepath.Glob(pattern)
-	for _, mypath := range paths {
-		universalPaths = append(universalPaths, filepath.ToSlash(mypath))
-	}
 	if err != nil {
 		log.Fatal(err)
 	}
-	if len(universalPaths) == 0 {
+	if len(paths) == 0 {
 		log.Fatalf("%s: no such file or directory", pattern)
 	}
-	return universalPaths
+	return paths
 }
 
 type stringFlags []string
