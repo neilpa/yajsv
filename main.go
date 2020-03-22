@@ -20,7 +20,9 @@ import (
 )
 
 var (
-	version = "undefined"
+	Version string
+	CommitId string
+	BuildTimestamp string
 	schemaFlag  = flag.String("s", "", "primary JSON schema to validate against, required")
 	quietFlag   = flag.Bool("q", false, "quiet, only print validation failures and errors")
 	versionFlag = flag.Bool("v", false, "print version and exit")
@@ -43,7 +45,7 @@ func main() {
 func realMain(args []string) int {
 	flag.CommandLine.Parse(args)
 	if *versionFlag {
-		fmt.Println(version)
+		fmt.Println(Version)
 		return 0
 	}
 	if *schemaFlag == "" {
