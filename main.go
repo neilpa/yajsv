@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	version = "undefined"
+	version     = "undefined"
 	schemaFlag  = flag.String("s", "", "primary JSON schema to validate against, required")
 	quietFlag   = flag.Bool("q", false, "quiet, only print validation failures and errors")
 	versionFlag = flag.Bool("v", false, "print version and exit")
@@ -131,7 +131,6 @@ func realMain(args []string) int {
 			defer wg.Done()
 			sem <- 0
 			defer func() { <-sem }()
-
 
 			loader, err := jsonLoader(path)
 			if err != nil {
