@@ -1,118 +1,92 @@
-// +build windows !windows
-
 package main
 
 import (
-	"log"
+	"path/filepath"
+	"sort"
+	"strings"
+	"testing"
 )
 
-func ExampleMain_pass_ymlschema_ymldoc() {
-	exit := realMain([]string{"-s", "testdata/schema.yml", "testdata/data-pass.yml"})
-	if exit != 0 {
-		log.Fatalf("exit: got %d, want 0", exit)
+func TestMain(t *testing.T) {
+	tests := []struct {
+		in string
+		out []string
+		exit int
+	} {
+		{
+			"-s testdata/schema.yml testdata/data-pass.yml",
+			[]string{"testdata/data-pass.yml: pass"},
+			0,
+		}, {
+			"-s testdata/schema.json testdata/data-pass.yml",
+			[]string{"testdata/data-pass.yml: pass"},
+			0,
+		}, {
+			"-s testdata/schema.json testdata/data-pass.json",
+			[]string{"testdata/data-pass.json: pass"},
+			0,
+		}, {
+			"-s testdata/schema.yml testdata/data-pass.json",
+			[]string{"testdata/data-pass.json: pass"},
+			0,
+		}, {
+			"-q -s testdata/schema.yml testdata/data-fail.yml",
+			[]string{"testdata/data-fail.yml: fail: (root): foo is required"},
+			1,
+		}, {
+			"-q -s testdata/schema.json testdata/data-fail.yml",
+			[]string{"testdata/data-fail.yml: fail: (root): foo is required"},
+			1,
+		}, {
+			"-q -s testdata/schema.json testdata/data-fail.json",
+			[]string{"testdata/data-fail.json: fail: (root): foo is required"},
+			1,
+		}, {
+			"-q -s testdata/schema.yml testdata/data-fail.json",
+			[]string{"testdata/data-fail.json: fail: (root): foo is required"},
+			1,
+		}, {
+			"-q -s testdata/schema.json testdata/data-error.json",
+			[]string{"testdata/data-error.json: error: validate: invalid character 'o' in literal null (expecting 'u')"},
+			2,
+		}, {
+			"-q -s testdata/schema.yml testdata/data-error.yml",
+			[]string{"testdata/data-error.yml: error: load doc: yaml: found unexpected end of stream"},
+			2,
+		}, {
+			"-q -s testdata/schema.json testdata/data-*.json",
+			[]string{
+				"testdata/data-fail.json: fail: (root): foo is required",
+				"testdata/data-error.json: error: validate: invalid character 'o' in literal null (expecting 'u')",
+			}, 3,
+		}, {
+			"-q -s testdata/schema.yml testdata/data-*.yml",
+			[]string{
+				"testdata/data-error.yml: error: load doc: yaml: found unexpected end of stream",
+				"testdata/data-fail.yml: fail: (root): foo is required",
+			}, 3,
+		},
 	}
-	// Output:
-	// testdata/data-pass.yml: pass
+
+	for _, tt := range tests {
+		in := strings.ReplaceAll(tt.in, "/", string(filepath.Separator))
+		sort.Strings(tt.out)
+		out := strings.Join(tt.out, "\n")
+		out = strings.ReplaceAll(out, "/", string(filepath.Separator))
+
+		t.Run(in, func(t *testing.T) {
+			var w strings.Builder
+			exit := realMain(strings.Split(in, " "), &w)
+			if exit != tt.exit {
+				t.Fatalf("exit: got %d, want %d", exit, tt.exit)
+			}
+			lines := strings.Split(w.String(), "\n")
+			sort.Strings(lines)
+			got := strings.Join(lines[1:], "\n")
+			if got != out {
+				t.Errorf("got\n%s\nwant\n%s", got, out)
+			}
+		})
+	}
 }
 
-func ExampleMain_pass_jsonschema_ymldoc() {
-	exit := realMain([]string{"-s", "testdata/schema.json", "testdata/data-pass.yml"})
-	if exit != 0 {
-		log.Fatalf("exit: got %d, want 0", exit)
-	}
-	// Output:
-	// testdata/data-pass.yml: pass
-}
-
-func ExampleMain_pass_jsonschema_jsondoc() {
-	exit := realMain([]string{"-s", "testdata/schema.json", "testdata/data-pass.json"})
-	if exit != 0 {
-		log.Fatalf("exit: got %d, want 0", exit)
-	}
-	// Output:
-	// testdata/data-pass.json: pass
-}
-
-func ExampleMain_pass_ymlschema_jsondoc() {
-	exit := realMain([]string{"-s", "testdata/schema.yml", "testdata/data-pass.json"})
-	if exit != 0 {
-		log.Fatalf("exit: got %d, want 0", exit)
-	}
-	// Output:
-	// testdata/data-pass.json: pass
-}
-
-func ExampleMain_fail_ymlschema_ymldoc() {
-	exit := realMain([]string{"-q", "-s", "testdata/schema.yml", "testdata/data-fail.yml"})
-	if exit != 1 {
-		log.Fatalf("exit: got %d, want 1", exit)
-	}
-	// Output:
-	// testdata/data-fail.yml: fail: (root): foo is required
-}
-
-func ExampleMain_fail_jsonschema_ymldoc() {
-	exit := realMain([]string{"-q", "-s", "testdata/schema.json", "testdata/data-fail.yml"})
-	if exit != 1 {
-		log.Fatalf("exit: got %d, want 1", exit)
-	}
-	// Output:
-	// testdata/data-fail.yml: fail: (root): foo is required
-}
-
-func ExampleMain_fail_jsonschema_jsondoc() {
-	exit := realMain([]string{"-q", "-s", "testdata/schema.json", "testdata/data-fail.json"})
-	if exit != 1 {
-		log.Fatalf("exit: got %d, want 1", exit)
-	}
-	// Output:
-	// testdata/data-fail.json: fail: (root): foo is required
-}
-
-func ExampleMain_fail_ymlschema_jsondoc() {
-	exit := realMain([]string{"-q", "-s", "testdata/schema.yml", "testdata/data-fail.json"})
-	if exit != 1 {
-		log.Fatalf("exit: got %d, want 1", exit)
-	}
-	// Output:
-	// testdata/data-fail.json: fail: (root): foo is required
-}
-
-func ExampleMain_error_jsonschema_jsondoc() {
-	exit := realMain([]string{"-q", "-s", "testdata/schema.json", "testdata/data-error.json"})
-	if exit != 2 {
-		log.Fatalf("exit: got %d, want 2", exit)
-	}
-	// Output:
-	// testdata/data-error.json: error: validate: invalid character 'o' in literal null (expecting 'u')
-}
-
-func ExampleMain_error_ymlschema_ymldoc() {
-	exit := realMain([]string{"-q", "-s", "testdata/schema.yml", "testdata/data-error.yml"})
-	if exit != 2 {
-		log.Fatalf("exit: got %d, want 2", exit)
-	}
-	// Output:
-	// testdata/data-error.yml: error: load doc yaml: found unexpected end of stream
-}
-
-func ExampleMain_glob_jsonschema_jsondoc() {
-	exit := realMain([]string{"-q", "-s", "testdata/schema.json", "testdata/data-*.json"})
-	if exit != 3 {
-		log.Fatalf("exit: got %d, want 3", exit)
-	}
-	// Unordered output:
-	// testdata/data-error.json: error: validate: invalid character 'o' in literal null (expecting 'u')
-	// testdata/data-fail.json: fail: (root): foo is required
-}
-
-func ExampleMain_glob_ymlschema_ymldoc() {
-	exit := realMain([]string{"-q", "-s", "testdata/schema.yml", "testdata/data-*.yml"})
-	if exit != 3 {
-		log.Fatalf("exit: got %d, want 3", exit)
-	}
-	// Unordered output:
-	// testdata/data-fail.yml: fail: (root): foo is required
-	//
-	// testdata/data-error.yml: error: load doc yaml: found unexpected end of stream
-}
