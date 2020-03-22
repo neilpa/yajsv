@@ -70,6 +70,7 @@ func realMain(args []string) int {
 			if !filepath.IsAbs(pattern) {
 				pattern = filepath.Join(dir, pattern)
 			}
+
 			docs = append(docs, glob(pattern)...)
 		}
 		if err := scanner.Err(); err != nil {
@@ -90,7 +91,7 @@ func realMain(args []string) int {
 		for _, p := range glob(ref) {
 			absPath, absPathErr := filepath.Abs(p)
 			if absPathErr != nil {
-				log.Fatalf("%s: unable to convert to absolute path: %s\n", absPath, err)
+				log.Fatalf("%s: unable to convert to absolute path: %s\n", absPath, absPathErr)
 			}
 
 			if absPath == schemaPath {
@@ -124,6 +125,7 @@ func realMain(args []string) int {
 	failures := make([]string, 0)
 	errors := make([]string, 0)
 	for _, p := range docs {
+		//fmt.Println(p)
 		wg.Add(1)
 		go func(path string) {
 			defer wg.Done()
@@ -233,14 +235,18 @@ func glob(pattern string) []string {
 	if err != nil {
 		log.Fatal(err)
 	}
+	universalPaths := make([]string, 0)
 	paths, err := filepath.Glob(pattern)
+	for _, mypath := range paths {
+		universalPaths = append(universalPaths, filepath.ToSlash(mypath))
+	}
 	if err != nil {
 		log.Fatal(err)
 	}
-	if len(paths) == 0 {
+	if len(universalPaths) == 0 {
 		log.Fatalf("%s: no such file or directory", pattern)
 	}
-	return paths
+	return universalPaths
 }
 
 type stringFlags []string
