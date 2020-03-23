@@ -14,7 +14,7 @@ release: *.go
 
 .PHONY: clean
 clean:
-	$(eval BINARY := ${BINARY_NAME}$(if $(findstring windows,$(GOOS)),.exe,))
+	$(eval BINARY := ${BINARY_NAME}$(if $(findstring windows,$(shell go env GOOS)),.exe,))
 	rm -rf ${BUILD_DIR} ${BINARY} coverage.out
 
 .PHONY: fmt
