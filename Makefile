@@ -2,7 +2,6 @@ ARCH := darwin/amd64 linux/386 linux/amd64 windows/386 windows/amd64
 VERSION := $(shell git describe --always --dirty)
 LDFLAGS := -ldflags "-X main.version=${VERSION}"
 BUILD_DIR := build
-BINARY_NAME ?= yajsv
 
 .PHONY: build
 build: *.go
@@ -14,8 +13,7 @@ release: *.go
 
 .PHONY: clean
 clean:
-	$(eval BINARY := ${BINARY_NAME}$(if $(findstring windows,$(shell go env GOOS)),.exe,))
-	rm -rf ${BUILD_DIR} ${BINARY} coverage.out
+	rm -rf ${BUILD_DIR} yajsv yajsv.exe coverage.out
 
 .PHONY: fmt
 fmt:
