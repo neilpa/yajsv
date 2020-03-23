@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	version = "v1.3.0-dev"
+	version     = "v1.3.0-dev"
 	schemaFlag  = flag.String("s", "", "primary JSON schema to validate against, required")
 	quietFlag   = flag.Bool("q", false, "quiet, only print validation failures and errors")
 	versionFlag = flag.Bool("v", false, "print version and exit")
