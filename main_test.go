@@ -69,10 +69,10 @@ func TestMain(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		in := strings.ReplaceAll(tt.in, "/", string(filepath.Separator))
+		in := strings.Replace(tt.in, "/", string(filepath.Separator), -1)
 		sort.Strings(tt.out)
 		out := strings.Join(tt.out, "\n")
-		out = strings.ReplaceAll(out, "/", string(filepath.Separator))
+		out = strings.Replace(out, "/", string(filepath.Separator), -1)
 
 		t.Run(in, func(t *testing.T) {
 			var w strings.Builder
