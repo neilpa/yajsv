@@ -2,8 +2,11 @@
 // a provided JSON Schema - https://json-schema.org/
 package main
 
+//go:generate go run gen_testdata.go
+
 import (
 	"bufio"
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -15,19 +18,35 @@ import (
 	"strings"
 	"sync"
 
+	"golang.org/x/text/encoding"
+	"golang.org/x/text/encoding/unicode"
+
 	"github.com/ghodss/yaml"
 	"github.com/mitchellh/go-homedir"
 	"github.com/xeipuuv/gojsonschema"
 )
 
 var (
-	version     = "v1.3.0-dev"
+	version     = "v1.4.0-dev"
 	schemaFlag  = flag.String("s", "", "primary JSON schema to validate against, required")
 	quietFlag   = flag.Bool("q", false, "quiet, only print validation failures and errors")
 	versionFlag = flag.Bool("v", false, "print version and exit")
+	bomFlag     = flag.Bool("b", false, "allow BOM in JSON files, error if seen and unset")
 
 	listFlags stringFlags
 	refFlags  stringFlags
+)
+
+// https://en.wikipedia.org/wiki/Byte_order_mark#Byte_order_marks_by_encoding
+const (
+	bomUTF8    = "\xEF\xBB\xBF"
+	bomUTF16BE = "\xFE\xFF"
+	bomUTF16LE = "\xFF\xFE"
+)
+
+var (
+	encUTF16BE = unicode.UTF16(unicode.BigEndian, unicode.IgnoreBOM)
+	encUTF16LE = unicode.UTF16(unicode.LittleEndian, unicode.IgnoreBOM)
 )
 
 func init() {
@@ -131,7 +150,6 @@ func realMain(args []string, w io.Writer) int {
 			sem <- 0
 			defer func() { <-sem }()
 
-
 			loader, err := jsonLoader(path)
 			if err != nil {
 				msg := fmt.Sprintf("%s: error: load doc: %s", path, err)
@@ -190,12 +208,55 @@ func jsonLoader(path string) (gojsonschema.JSONLoader, error) {
 	}
 	switch filepath.Ext(path) {
 	case ".yml", ".yaml":
+		// TODO YAML requires the precense of a BOM to detect UTF-16
+		// text. Is there a decent hueristic to detect UTF-16 text
+		// missing a BOM so we can provide a better error message?
 		buf, err = yaml.YAMLToJSON(buf)
+	default:
+		buf, err = jsonDecodeCharset(buf)
 	}
 	if err != nil {
 		return nil, err
 	}
+	// TODO What if we have an empty document?
 	return gojsonschema.NewBytesLoader(buf), nil
+}
+
+// jsonDecodeCharset attempts to detect UTF-16 (LE or BE) JSON text and
+// decode as appropriate. It also skips a BOM at the start of the buffer
+// if `-b` was specified. Presence of a BOM is an error otherwise.
+func jsonDecodeCharset(buf []byte) ([]byte, error) {
+	if len(buf) < 2 { // UTF-8
+		return buf, nil
+	}
+
+	bom := ""
+	var enc encoding.Encoding
+	switch {
+	case bytes.HasPrefix(buf, []byte(bomUTF8)):
+		bom = bomUTF8
+	case bytes.HasPrefix(buf, []byte(bomUTF16BE)):
+		bom = bomUTF16BE
+		enc = encUTF16BE
+	case bytes.HasPrefix(buf, []byte(bomUTF16LE)):
+		bom = bomUTF16LE
+		enc = encUTF16LE
+	case buf[0] == 0:
+		enc = encUTF16BE
+	case buf[1] == 0:
+		enc = encUTF16LE
+	}
+
+	if bom != "" {
+		if !*bomFlag {
+			return nil, fmt.Errorf("unexpected BOM, see `-b` flag")
+		}
+		buf = buf[len(bom):]
+	}
+	if enc != nil {
+		return enc.NewDecoder().Bytes(buf)
+	}
+	return buf, nil
 }
 
 func printUsage() {
