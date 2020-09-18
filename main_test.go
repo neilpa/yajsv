@@ -9,61 +9,61 @@ import (
 
 func TestMain(t *testing.T) {
 	tests := []struct {
-		in string
-		out []string
+		in   string
+		out  []string
 		exit int
-	} {
+	}{
 		{
-			"-s testdata/schema.yml testdata/data-pass.yml",
-			[]string{"testdata/data-pass.yml: pass"},
+			"-s testdata/utf-8/schema.yml testdata/utf-8/data-pass.yml",
+			[]string{"testdata/utf-8/data-pass.yml: pass"},
 			0,
 		}, {
-			"-s testdata/schema.json testdata/data-pass.yml",
-			[]string{"testdata/data-pass.yml: pass"},
+			"-s testdata/utf-8/schema.json testdata/utf-8/data-pass.yml",
+			[]string{"testdata/utf-8/data-pass.yml: pass"},
 			0,
 		}, {
-			"-s testdata/schema.json testdata/data-pass.json",
-			[]string{"testdata/data-pass.json: pass"},
+			"-s testdata/utf-8/schema.json testdata/utf-8/data-pass.json",
+			[]string{"testdata/utf-8/data-pass.json: pass"},
 			0,
 		}, {
-			"-s testdata/schema.yml testdata/data-pass.json",
-			[]string{"testdata/data-pass.json: pass"},
+			"-s testdata/utf-8/schema.yml testdata/utf-8/data-pass.json",
+			[]string{"testdata/utf-8/data-pass.json: pass"},
 			0,
 		}, {
-			"-q -s testdata/schema.yml testdata/data-fail.yml",
-			[]string{"testdata/data-fail.yml: fail: (root): foo is required"},
+			"-q -s testdata/utf-8/schema.yml testdata/utf-8/data-fail.yml",
+			[]string{"testdata/utf-8/data-fail.yml: fail: (root): foo is required"},
 			1,
 		}, {
-			"-q -s testdata/schema.json testdata/data-fail.yml",
-			[]string{"testdata/data-fail.yml: fail: (root): foo is required"},
+			"-q -s testdata/utf-8/schema.json testdata/utf-8/data-fail.yml",
+			[]string{"testdata/utf-8/data-fail.yml: fail: (root): foo is required"},
 			1,
 		}, {
-			"-q -s testdata/schema.json testdata/data-fail.json",
-			[]string{"testdata/data-fail.json: fail: (root): foo is required"},
+			"-q -s testdata/utf-8/schema.json testdata/utf-8/data-fail.json",
+			[]string{"testdata/utf-8/data-fail.json: fail: (root): foo is required"},
 			1,
 		}, {
-			"-q -s testdata/schema.yml testdata/data-fail.json",
-			[]string{"testdata/data-fail.json: fail: (root): foo is required"},
+			"-q -s testdata/utf-8/schema.yml testdata/utf-8/data-fail.json",
+			[]string{"testdata/utf-8/data-fail.json: fail: (root): foo is required"},
 			1,
 		}, {
-			"-q -s testdata/schema.json testdata/data-error.json",
-			[]string{"testdata/data-error.json: error: validate: invalid character 'o' in literal null (expecting 'u')"},
+			"-q -s testdata/utf-8/schema.json testdata/utf-8/data-error.json",
+			[]string{"testdata/utf-8/data-error.json: error: validate: invalid character 'o' in literal null (expecting 'u')"},
 			2,
 		}, {
-			"-q -s testdata/schema.yml testdata/data-error.yml",
-			[]string{"testdata/data-error.yml: error: load doc: yaml: found unexpected end of stream"},
+			"-q -s testdata/utf-8/schema.yml testdata/utf-8/data-error.yml",
+			[]string{"testdata/utf-8/data-error.yml: error: load doc: yaml: found unexpected end of stream"},
 			2,
 		}, {
-			"-q -s testdata/schema.json testdata/data-*.json",
+			"-q -s testdata/utf-8/schema.json testdata/utf-8/data-*.json",
 			[]string{
-				"testdata/data-fail.json: fail: (root): foo is required",
-				"testdata/data-error.json: error: validate: invalid character 'o' in literal null (expecting 'u')",
+				"testdata/utf-8/data-fail.json: fail: (root): foo is required",
+				"testdata/utf-8/data-error.json: error: validate: invalid character 'o' in literal null (expecting 'u')",
 			}, 3,
 		}, {
-			"-q -s testdata/schema.yml testdata/data-*.yml",
+			"-q -s testdata/utf-8/schema.yml testdata/utf-8/data-*.yml",
 			[]string{
-				"testdata/data-error.yml: error: load doc: yaml: found unexpected end of stream",
-				"testdata/data-fail.yml: fail: (root): foo is required",
+				"testdata/utf-8/data-error.yml: error: load doc: yaml: found unexpected end of stream",
+				"testdata/utf-8/data-fail.yml: fail: (root): foo is required",
 			}, 3,
 		},
 	}
@@ -89,4 +89,3 @@ func TestMain(t *testing.T) {
 		})
 	}
 }
-
