@@ -79,7 +79,7 @@ func realMain(args []string, w io.Writer) int {
 		dir := filepath.Dir(list)
 		f, err := os.Open(list)
 		if err != nil {
-			log.Fatalf("%s: %s\n", list, err)
+			return schemaError("%s: %s", list, err)
 		}
 		defer f.Close()
 
@@ -93,7 +93,7 @@ func realMain(args []string, w io.Writer) int {
 			docs = append(docs, glob(pattern)...)
 		}
 		if err := scanner.Err(); err != nil {
-			log.Fatalf("%s: invalid file list: %s\n", list, err)
+			return schemaError("%s: invalid file list: %s", list, err)
 		}
 	}
 	if len(docs) == 0 {
@@ -104,13 +104,13 @@ func realMain(args []string, w io.Writer) int {
 	sl := gojsonschema.NewSchemaLoader()
 	schemaPath, err := filepath.Abs(*schemaFlag)
 	if err != nil {
-		log.Fatalf("%s: unable to convert to absolute path: %s\n", *schemaFlag, err)
+		return schemaError("%s: unable to convert to absolute path: %s", *schemaFlag, err)
 	}
 	for _, ref := range refFlags {
 		for _, p := range glob(ref) {
 			absPath, err := filepath.Abs(p)
 			if err != nil {
-				log.Fatalf("%s: unable to convert to absolute path: %s\n", absPath, err)
+				return schemaError("%s: unable to convert to absolute path: %s", absPath, err)
 			}
 
 			if absPath == schemaPath {
@@ -119,22 +119,22 @@ func realMain(args []string, w io.Writer) int {
 
 			loader, err := jsonLoader(absPath)
 			if err != nil {
-				log.Fatalf("%s: unable to load schema ref: %s\n", *schemaFlag, err)
+				return schemaError("%s: unable to load schema ref: %s", *schemaFlag, err)
 			}
 
 			if err := sl.AddSchemas(loader); err != nil {
-				log.Fatalf("%s: invalid schema: %s\n", p, err)
+				return schemaError("%s: invalid schema: %s", p, err)
 			}
 		}
 	}
 
 	schemaLoader, err := jsonLoader(schemaPath)
 	if err != nil {
-		log.Fatalf("%s: unable to load schema: %s\n", *schemaFlag, err)
+		return schemaError("%s: unable to load schema: %s", *schemaFlag, err)
 	}
 	schema, err := sl.Compile(schemaLoader)
 	if err != nil {
-		log.Fatalf("%s: invalid schema: %s\n", *schemaFlag, err)
+		return schemaError("%s: invalid schema: %s", *schemaFlag, err)
 	}
 
 	// Validate the schema against each doc in parallel, limiting simultaneous
@@ -262,8 +262,8 @@ func jsonDecodeCharset(buf []byte) ([]byte, error) {
 func printUsage() {
 	fmt.Fprintf(os.Stderr, `Usage: %s -s schema.(json|yml) [options] document.(json|yml) ...
 
-  yajsv validates JSON and YAML document(s) against a schema. One of three statuses are
-  reported per document:
+  yajsv validates JSON and YAML document(s) against a schema. One of three status
+  results are reported per document:
 
     pass: Document is valid relative to the schema
     fail: Document is invalid relative to the schema
@@ -273,7 +273,8 @@ func printUsage() {
   schema validation failure.
 
   Sets the exit code to 1 on any failures, 2 on any errors, 3 on both, 4 on
-  invalid usage. Otherwise, 0 is returned if everything passes validation.
+  invalid usage, 5 on schema definition or file-list errors. Otherwise, 0 is
+  returned if everything passes validation.
 
 Options:
 
@@ -286,6 +287,11 @@ func usageError(msg string) int {
 	fmt.Fprintln(os.Stderr, msg)
 	printUsage()
 	return 4
+}
+
+func schemaError(format string, args ...interface{}) int {
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
+	return 5
 }
 
 // glob is a wrapper that also resolves `~` since we may be skipping
