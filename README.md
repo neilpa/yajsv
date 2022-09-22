@@ -8,10 +8,10 @@ The real credit goes to [xeipuuv/gojsonschema](https://github.com/xeipuuv/gojson
 
 ## Installation
 
-Simply use `go get` to install
+Simply use `go install` to install
 
 ```
-go get neilpa.me/yajsv
+go install github.com/neilpa/yajsv
 ```
 
 There are also pre-built static binaries for Windows, Mac and Linux on the [releases tab](https://github.com/neilpa/yajsv/releases/latest).
