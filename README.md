@@ -62,6 +62,6 @@ URI references to either local or external files.
 
 See `yajsv -h` for more details
 
-## Licence
+## License
 
 [MIT](/LICENSE)
