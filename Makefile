@@ -1,4 +1,4 @@
-ARCH := darwin/amd64 linux/386 linux/amd64 windows/386 windows/amd64
+ARCH := darwin/amd64 darwin/arm64 linux/386 linux/amd64 windows/386 windows/amd64
 VERSION := $(shell git describe --always --dirty)
 LDFLAGS := -ldflags "-X main.version=${VERSION}"
 BUILD_DIR := build
