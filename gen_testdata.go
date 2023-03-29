@@ -1,4 +1,4 @@
-// +build ignore
+//go:build ignore
 
 // gen_testdata clones the utf-8 tests data to the other
 // unicode encodings and adds BOM variants of each.
