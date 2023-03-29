@@ -10,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -61,7 +60,10 @@ func main() {
 }
 
 func realMain(args []string, w io.Writer) int {
-	flag.CommandLine.Parse(args)
+	if err := flag.CommandLine.Parse(args); err != nil {
+		_ = fmt.Errorf("could not parse flags: %w", err)
+		return 0
+	}
 	if *versionFlag {
 		fmt.Fprintln(w, version)
 		return 0
@@ -202,7 +204,7 @@ func realMain(args []string, w io.Writer) int {
 }
 
 func jsonLoader(path string) (gojsonschema.JSONLoader, error) {
-	buf, err := ioutil.ReadFile(path)
+	buf, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
