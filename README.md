@@ -10,8 +10,8 @@ The real credit goes to [xeipuuv/gojsonschema](https://github.com/xeipuuv/gojson
 
 Simply use `go install` to install
 
-```
-go install github.com/neilpa/yajsv
+```sh
+go install github.com/neilpa/yajsv@latest
 ```
 
 There are also pre-built static binaries for Windows, Mac and Linux on the [releases tab](https://github.com/neilpa/yajsv/releases/latest).
@@ -28,21 +28,21 @@ The 'fail' status may be reported multiple times per-document, once for each sch
 
 Basic usage example
 
-```
+```console
 $ yajsv -s schema.json document.json
 document.json: pass
 ```
 
 Or with both schema and doc in YAML.
 
-```
+```console
 $ yajsv -s schema.yml document.yml
 document.yml: pass
 ```
 
 With multiple schema files and docs
 
-```
+```console
 $ yajsv -s schema.json -r foo.json -r bar.yaml doc1.json doc2.yaml
 doc1.json: pass
 doc2.json: pass
@@ -50,7 +50,7 @@ doc2.json: pass
 
 Or with file globs (note the quotes to side-step shell expansion)
 
-```
+```console
 $ yajsv -s main.schema.json -r '*.schema.json' 'docs/*.json'
 docs/a.json: pass
 docs/b.json: fail: Validation failure message
